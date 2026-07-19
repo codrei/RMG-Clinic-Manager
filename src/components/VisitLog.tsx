@@ -195,21 +195,21 @@ export function VisitLog({ patientId }: { patientId: string }) {
             <span className="mb-1.5 block text-sm font-semibold">Procedures</span>
             <div className="space-y-2">
               {rows.map((r, i) => (
-                <div key={i} className="grid grid-cols-[1fr_8rem_6rem_2rem] items-center gap-2">
+                <div key={i} className="flex flex-wrap items-center gap-2 rounded-lg border border-border/60 p-2 sm:border-0 sm:p-0">
                   <input
                     value={r.name}
                     onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))}
                     placeholder="Procedure (e.g. Tooth filling)"
                     list="common-procedures"
                     maxLength={80}
-                    className={inputCls}
+                    className={`${inputCls} w-full sm:w-auto sm:flex-1`}
                   />
                   <input
                     value={r.teethText}
                     onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, teethText: e.target.value } : x)))}
                     placeholder="Teeth: 16, 21"
                     maxLength={40}
-                    className={inputCls}
+                    className={`${inputCls} min-w-0 flex-1 sm:flex-none sm:w-32`}
                   />
                   <input
                     value={r.fee}
@@ -217,7 +217,7 @@ export function VisitLog({ patientId }: { patientId: string }) {
                     placeholder="Fee ₱"
                     inputMode="numeric"
                     maxLength={7}
-                    className={inputCls}
+                    className={`${inputCls} w-24`}
                   />
                   <button
                     onClick={() => setRows(rows.length > 1 ? rows.filter((_, j) => j !== i) : rows)}

@@ -65,6 +65,8 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   line-height: 1.5;
+  /* The page never scrolls sideways — wide content scrolls inside its own container. */
+  overflow-x: clip;
 }
 
 @layer base {

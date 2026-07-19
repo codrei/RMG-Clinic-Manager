@@ -34,7 +34,15 @@ export function ToothChart({ patientId }: { patientId: string }) {
     setDraftNote(cur?.note ?? '');
   }, [selected, teeth]);
 
+  // Desktop: one row per arch (16 teeth). Phones: one row per QUADRANT
+  // (8 teeth) — the whole chart fits with no sideways scrolling.
   const rows = dentition === 'adult' ? [ADULT_UPPER, ADULT_LOWER] : [PRIMARY_UPPER, PRIMARY_LOWER];
+  const mobileRows =
+    dentition === 'adult'
+      ? [ADULT_UPPER.slice(0, 8), ADULT_UPPER.slice(8), ADULT_LOWER.slice(0, 8), ADULT_LOWER.slice(8)]
+      : [PRIMARY_UPPER, PRIMARY_LOWER];
+  /** Rows belonging to the lower arch print their numbers below the tooth. */
+  const isLowerRow = (rowIdx: number, total: number) => rowIdx >= total / 2;
 
   const summary = useMemo(() => {
     if (!teeth) return [];
@@ -106,37 +114,54 @@ export function ToothChart({ patientId }: { patientId: string }) {
         </div>
       </div>
 
-      {/* The chart */}
-      <p className="mt-2 text-xs text-muted-foreground sm:hidden">← Swipe the chart sideways to reach all teeth →</p>
-      <div className="no-scrollbar mt-2 overflow-x-auto pb-1 sm:mt-4">
-        <div className="min-w-[520px]">
-          {rows.map((row, rowIdx) => (
-            <div key={rowIdx} className={`flex justify-center gap-1 ${rowIdx === 1 ? 'mt-3 border-t border-dashed border-border pt-3' : ''}`}>
-              {row.map((num, i) => {
-                const entry = teeth[num];
-                const meta = entry ? statusMeta(entry.status) : null;
-                const midline = i === row.length / 2;
-                const isSel = selected === num;
-                return (
-                  <div key={num} className={`flex flex-col items-center ${midline ? 'ml-3 border-l border-dashed border-border pl-3' : ''}`}>
-                    {rowIdx === 0 && <span className="mb-1 text-[10px] font-semibold tabular-nums text-muted-foreground">{num}</span>}
-                    <button
-                      onClick={() => setSelected(isSel ? null : num)}
-                      title={`${num} — ${toothName(num)}${entry ? ` · ${meta!.label}` : ''}`}
-                      className={`grid h-8 w-6 place-items-center rounded-md border text-[9px] font-bold transition-all sm:h-9 sm:w-7 sm:text-[10px] ${
-                        meta ? meta.chip : 'border-border bg-surface text-transparent hover:border-primary'
-                      } ${isSel ? 'ring-2 ring-primary ring-offset-2' : ''} ${entry?.note ? 'shadow-[0_2px_0_0_var(--accent)]' : ''}`}
-                    >
-                      {meta ? meta.code : '·'}
-                    </button>
-                    {rowIdx === 1 && <span className="mt-1 text-[10px] font-semibold tabular-nums text-muted-foreground">{num}</span>}
-                  </div>
-                );
-              })}
+      {/* The chart — phones get quadrant rows (no sideways scroll), desktop gets full arches */}
+      {(() => {
+        const renderRow = (row: string[], labelBelow: boolean, midlineAt: number | null, topBorder: boolean) => (
+          <div className={`flex justify-center gap-1 ${topBorder ? 'mt-3 border-t border-dashed border-border pt-3' : 'mt-1.5'}`}>
+            {row.map((num, i) => {
+              const entry = teeth[num];
+              const meta = entry ? statusMeta(entry.status) : null;
+              const midline = midlineAt !== null && i === midlineAt;
+              const isSel = selected === num;
+              return (
+                <div key={num} className={`flex flex-col items-center ${midline ? 'ml-2.5 border-l border-dashed border-border pl-2.5' : ''}`}>
+                  {!labelBelow && <span className="mb-1 text-[10px] font-semibold tabular-nums text-muted-foreground">{num}</span>}
+                  <button
+                    onClick={() => setSelected(isSel ? null : num)}
+                    title={`${num} — ${toothName(num)}${entry ? ` · ${meta!.label}` : ''}`}
+                    className={`grid h-9 w-8 place-items-center rounded-md border text-[10px] font-bold transition-all sm:w-7 ${
+                      meta ? meta.chip : 'border-border bg-surface text-transparent hover:border-primary'
+                    } ${isSel ? 'ring-2 ring-primary ring-offset-2' : ''} ${entry?.note ? 'shadow-[0_2px_0_0_var(--accent)]' : ''}`}
+                  >
+                    {meta ? meta.code : '·'}
+                  </button>
+                  {labelBelow && <span className="mt-1 text-[10px] font-semibold tabular-nums text-muted-foreground">{num}</span>}
+                </div>
+              );
+            })}
+          </div>
+        );
+
+        return (
+          <>
+            {/* Phones: one quadrant per row — everything visible at once */}
+            <div className="mt-3 sm:hidden">
+              {mobileRows.map((row, i) =>
+                renderRow(
+                  row,
+                  isLowerRow(i, mobileRows.length),
+                  dentition === 'primary' ? row.length / 2 : null,
+                  i === mobileRows.length / 2,
+                ),
+              )}
             </div>
-          ))}
-        </div>
-      </div>
+            {/* Desktop: classic two-arch chart */}
+            <div className="mt-4 hidden sm:block">
+              {rows.map((row, i) => renderRow(row, i === 1, row.length / 2, i === 1))}
+            </div>
+          </>
+        );
+      })()}
 
       {/* Summary of findings */}
       {summary.length > 0 && (
