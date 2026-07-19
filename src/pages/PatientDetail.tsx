@@ -10,9 +10,9 @@ import {
   MapPin,
   Pencil,
   Phone,
-  Smile,
   User,
 } from 'lucide-react';
+import { ToothChart } from '../components/ToothChart';
 import {
   ageOf,
   archivePatient,
@@ -164,14 +164,9 @@ export function PatientDetail() {
           </dl>
         </section>
 
-        {/* Dental chart placeholder — Part 3 */}
-        <section className="rounded-2xl border border-dashed border-border bg-surface p-6 text-center lg:col-span-2">
-          <Smile className="mx-auto h-9 w-9 text-accent-ink/50" />
-          <h2 className="mt-3 font-serif text-lg font-semibold">Dental chart</h2>
-          <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
-            The interactive tooth chart (odontogram) arrives in the next part —
-            tap teeth to record findings and treatments.
-          </p>
+        {/* Dental chart (odontogram) */}
+        <section className="rounded-2xl border border-border bg-surface p-6 lg:col-span-2">
+          {id && <ToothChart patientId={id} />}
         </section>
       </div>
 
