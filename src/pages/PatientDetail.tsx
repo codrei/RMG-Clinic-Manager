@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { ToothChart } from '../components/ToothChart';
 import { VisitLog } from '../components/VisitLog';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import {
   ageOf,
   archivePatient,
@@ -26,6 +27,8 @@ export function PatientDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [patient, setPatient] = useState<Patient | null | undefined>(undefined);
+  const [askArchive, setAskArchive] = useState(false);
+  const [archiving, setArchiving] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -52,11 +55,15 @@ export function PatientDetail() {
 
   const age = ageOf(patient);
 
-  async function onArchive() {
+  async function confirmArchive() {
     if (!id) return;
-    if (!window.confirm(`Archive ${fullName(patient!)}'s record? It will be hidden from the list (not deleted).`)) return;
-    await archivePatient(id);
-    navigate('/');
+    setArchiving(true);
+    try {
+      await archivePatient(id);
+      navigate('/');
+    } finally {
+      setArchiving(false);
+    }
   }
 
   return (
@@ -89,8 +96,8 @@ export function PatientDetail() {
             <Pencil className="h-4 w-4" /> Edit
           </Link>
           <button
-            onClick={onArchive}
-            className="flex items-center gap-1.5 rounded-lg border border-border px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:border-danger/40 hover:text-danger"
+            onClick={() => setAskArchive(true)}
+            className="flex items-center gap-1.5 rounded-lg border border-border px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:border-warn/40 hover:text-warn"
           >
             <Archive className="h-4 w-4" /> Archive
           </button>
@@ -172,6 +179,21 @@ export function PatientDetail() {
 
       {/* Visit history & billing */}
       {id && <VisitLog patientId={id} />}
+
+      <ConfirmDialog
+        open={askArchive}
+        icon={Archive}
+        tone="warn"
+        title={`Archive ${fullName(patient)}'s record?`}
+        confirmLabel="Archive record"
+        busy={archiving}
+        onConfirm={confirmArchive}
+        onCancel={() => setAskArchive(false)}
+      >
+        The record is hidden from the patient list but{' '}
+        <span className="font-semibold text-foreground">nothing is deleted</span> — the chart and
+        visit history stay safely stored and can be restored later.
+      </ConfirmDialog>
     </div>
   );
 }

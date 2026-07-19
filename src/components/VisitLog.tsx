@@ -21,6 +21,7 @@ import {
   type Visit,
 } from '../lib/visits';
 import { applyProceduresToChart } from '../lib/chart';
+import { ConfirmDialog } from './ConfirmDialog';
 
 const longDate = new Intl.DateTimeFormat('en-PH', { weekday: 'short', year: 'numeric', month: 'long', day: 'numeric' });
 
@@ -52,6 +53,8 @@ export function VisitLog({ patientId }: { patientId: string }) {
   const [paid, setPaid] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<Visit | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => subscribeVisits(patientId, setVisits), [patientId]);
 
@@ -135,9 +138,15 @@ export function VisitLog({ patientId }: { patientId: string }) {
     }
   }
 
-  async function remove(v: Visit) {
-    if (!window.confirm(`Delete the ${fmtDate(v.date)} visit (${peso(v.totalFee)})? This cannot be undone.`)) return;
-    await deleteVisit(patientId, v.id!);
+  async function confirmDelete() {
+    if (!pendingDelete?.id) return;
+    setDeleting(true);
+    try {
+      await deleteVisit(patientId, pendingDelete.id);
+      setPendingDelete(null);
+    } finally {
+      setDeleting(false);
+    }
   }
 
   return (
@@ -307,7 +316,7 @@ export function VisitLog({ patientId }: { patientId: string }) {
                     <button onClick={() => startEdit(v)} className="rounded-lg p-1.5 text-muted-foreground hover:text-foreground" aria-label="Edit visit">
                       <Pencil className="h-4 w-4" />
                     </button>
-                    <button onClick={() => remove(v)} className="rounded-lg p-1.5 text-muted-foreground hover:text-danger" aria-label="Delete visit">
+                    <button onClick={() => setPendingDelete(v)} className="rounded-lg p-1.5 text-muted-foreground hover:text-danger" aria-label="Delete visit">
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
@@ -347,6 +356,27 @@ export function VisitLog({ patientId }: { patientId: string }) {
           })}
         </div>
       )}
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        icon={Trash2}
+        tone="danger"
+        title="Delete this visit?"
+        confirmLabel="Delete visit"
+        busy={deleting}
+        onConfirm={confirmDelete}
+        onCancel={() => setPendingDelete(null)}
+      >
+        {pendingDelete && (
+          <>
+            <span className="font-semibold text-foreground">{fmtDate(pendingDelete.date)}</span>
+            {pendingDelete.totalFee > 0 && <> · {peso(pendingDelete.totalFee)}</>}
+            <br />
+            This permanently removes the visit from the history. The dental
+            chart is not changed.
+          </>
+        )}
+      </ConfirmDialog>
     </section>
   );
 }
