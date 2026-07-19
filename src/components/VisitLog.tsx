@@ -18,7 +18,6 @@ import {
   peso,
   subscribeVisits,
   updateVisit,
-  visitTotal,
   type Visit,
 } from '../lib/visits';
 
