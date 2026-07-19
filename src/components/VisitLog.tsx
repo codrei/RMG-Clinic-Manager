@@ -151,24 +151,26 @@ export function VisitLog({ patientId }: { patientId: string }) {
 
   return (
     <section className="mt-6 rounded-2xl border border-border bg-surface p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="flex items-center gap-2 font-serif text-lg font-semibold">
-          <ClipboardList className="h-4 w-4 text-accent-ink" /> Visit history
-          {outstanding > 0 && (
-            <span className="rounded-full bg-warn-soft px-2.5 py-0.5 text-xs font-bold text-warn">
-              {peso(outstanding)} outstanding
-            </span>
-          )}
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="flex items-center gap-2 whitespace-nowrap font-serif text-lg font-semibold">
+          <ClipboardList className="h-4 w-4 shrink-0 text-accent-ink" /> Visit history
         </h2>
         {!open && (
           <button
             onClick={startAdd}
-            className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-fg transition-colors hover:bg-primary-hover"
+            className="flex shrink-0 items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-fg transition-colors hover:bg-primary-hover"
           >
             <Plus className="h-4 w-4" /> Add visit
           </button>
         )}
       </div>
+      {outstanding > 0 && (
+        <div className="mt-2">
+          <span className="inline-block rounded-full bg-warn-soft px-2.5 py-0.5 text-xs font-bold text-warn">
+            {peso(outstanding)} outstanding balance
+          </span>
+        </div>
+      )}
 
       {/* Add / edit form */}
       {open && (

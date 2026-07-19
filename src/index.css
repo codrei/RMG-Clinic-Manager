@@ -83,6 +83,14 @@ body {
   border-radius: 4px;
 }
 
+/* Horizontal scrollers (dental chart on phones) scroll without a scrollbar */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* Printable patient record: hide app controls, print on clean white */
 @media print {
   .no-print {

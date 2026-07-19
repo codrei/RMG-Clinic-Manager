@@ -107,8 +107,9 @@ export function ToothChart({ patientId }: { patientId: string }) {
       </div>
 
       {/* The chart */}
-      <div className="mt-4 overflow-x-auto pb-1">
-        <div className="min-w-[560px]">
+      <p className="mt-2 text-xs text-muted-foreground sm:hidden">← Swipe the chart sideways to reach all teeth →</p>
+      <div className="no-scrollbar mt-2 overflow-x-auto pb-1 sm:mt-4">
+        <div className="min-w-[520px]">
           {rows.map((row, rowIdx) => (
             <div key={rowIdx} className={`flex justify-center gap-1 ${rowIdx === 1 ? 'mt-3 border-t border-dashed border-border pt-3' : ''}`}>
               {row.map((num, i) => {
@@ -122,7 +123,7 @@ export function ToothChart({ patientId }: { patientId: string }) {
                     <button
                       onClick={() => setSelected(isSel ? null : num)}
                       title={`${num} — ${toothName(num)}${entry ? ` · ${meta!.label}` : ''}`}
-                      className={`grid h-9 w-7 place-items-center rounded-md border text-[10px] font-bold transition-all ${
+                      className={`grid h-8 w-6 place-items-center rounded-md border text-[9px] font-bold transition-all sm:h-9 sm:w-7 sm:text-[10px] ${
                         meta ? meta.chip : 'border-border bg-surface text-transparent hover:border-primary'
                       } ${isSel ? 'ring-2 ring-primary ring-offset-2' : ''} ${entry?.note ? 'shadow-[0_2px_0_0_var(--accent)]' : ''}`}
                     >
