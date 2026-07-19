@@ -6,6 +6,8 @@ import { auth } from './lib/firebase';
 import { Login } from './components/Login';
 import { Shell } from './components/Shell';
 import { Patients } from './pages/Patients';
+import { PatientForm } from './pages/PatientForm';
+import { PatientDetail } from './pages/PatientDetail';
 import { Today } from './pages/Today';
 
 /**
@@ -37,6 +39,9 @@ function App() {
     <Routes>
       <Route element={<Shell />}>
         <Route path="/" element={<Patients />} />
+        <Route path="/patients/new" element={<PatientForm />} />
+        <Route path="/patients/:id" element={<PatientDetail />} />
+        <Route path="/patients/:id/edit" element={<PatientForm />} />
         <Route path="/today" element={<Today />} />
         <Route path="*" element={<Patients />} />
       </Route>

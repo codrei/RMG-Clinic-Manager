@@ -1,0 +1,67 @@
+rules_version = '2';
+
+// RMG Dental Clinic — SHARED Firestore rules
+// One Firebase project serves two apps:
+//   - the public booking site  (bookings / bookedSlots / settings)
+//   - the private clinic manager (patients and everything under them)
+// This file is the single source of truth. Keep the copy in BOTH repos
+// (RMG-Dental-Clinic and RMG-Clinic-Manager) identical, and publish it in
+// Firebase Console → Firestore → Rules.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isClinic() {
+      return request.auth != null;
+    }
+
+    // ── Booking site ────────────────────────────────────────────────
+
+    function validBooking() {
+      let d = request.resource.data;
+      return d.status == 'pending'
+        && d.patientName is string && d.patientName.size() >= 2 && d.patientName.size() <= 80
+        && d.phone is string && d.phone.size() >= 7 && d.phone.size() <= 20
+        && d.serviceSlug is string && d.serviceSlug.size() <= 40
+        && d.serviceName is string && d.serviceName.size() <= 80
+        && d.durationMinutes is int && d.durationMinutes > 0 && d.durationMinutes <= 240
+        && d.date is string && d.date.matches('\\d{4}-\\d{2}-\\d{2}')
+        && d.time is string && d.time.matches('\\d{2}:\\d{2}')
+        && (!('email' in d) || (d.email is string && d.email.size() <= 100))
+        && (!('notes' in d) || (d.notes is string && d.notes.size() <= 500));
+    }
+
+    match /bookings/{bookingId} {
+      allow create: if validBooking();
+      allow read, update, delete: if isClinic();
+    }
+
+    match /bookedSlots/{slotId} {
+      allow read: if true;
+      // create-only: an existing slot doc can never be overwritten
+      allow create: if request.resource.data.keys().hasOnly(['date', 'time'])
+        && request.resource.data.date is string
+        && request.resource.data.time is string
+        && slotId == request.resource.data.date + '_' + request.resource.data.time.replace(':', '');
+      allow update: if false;
+      allow delete: if isClinic();
+    }
+
+    match /settings/{docId} {
+      allow read: if true;
+      allow write: if isClinic();
+    }
+
+    // ── Clinic manager (patient records) ────────────────────────────
+    // Strictly private: no public access of any kind. Covers the patient
+    // document and every subcollection under it (dental chart, visits, …).
+
+    match /patients/{patientId} {
+      allow read, write: if isClinic();
+
+      match /{document=**} {
+        allow read, write: if isClinic();
+      }
+    }
+  }
+}
