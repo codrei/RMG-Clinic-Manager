@@ -20,6 +20,7 @@ import {
   updateVisit,
   type Visit,
 } from '../lib/visits';
+import { applyProceduresToChart } from '../lib/chart';
 
 const longDate = new Intl.DateTimeFormat('en-PH', { weekday: 'short', year: 'numeric', month: 'long', day: 'numeric' });
 
@@ -124,6 +125,8 @@ export function VisitLog({ patientId }: { patientId: string }) {
       };
       if (editingId) await updateVisit(patientId, editingId, data);
       else await createVisit(patientId, data);
+      // Treatments ARE the tooth's new state — reflect them on the chart.
+      await applyProceduresToChart(patientId, date, parsed.procedures);
       setOpen(false);
     } catch {
       setError('Could not save the visit. Check your connection and try again.');
@@ -227,6 +230,10 @@ export function VisitLog({ patientId }: { patientId: string }) {
             >
               <Plus className="h-3.5 w-3.5" /> Add another procedure
             </button>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Fillings, extractions, root canals, crowns, bridges, and sealants
+              with teeth listed will update the dental chart automatically.
+            </p>
           </div>
 
           <label className="mt-4 block">

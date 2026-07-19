@@ -96,3 +96,52 @@ export async function setTooth(patientId: string, tooth: string, entry: ToothEnt
     : deleteField();
   await setDoc(ref, { teeth: { [tooth]: value }, updatedAt: serverTimestamp() }, { merge: true });
 }
+
+// ── Auto-charting from visit procedures ─────────────────────────────────
+// A completed treatment IS the tooth's new state: a filling on 16 makes 16
+// "filled". Keyword matching so the doctor's own phrasing still charts
+// ("Composite restoration", "RCT #36"). Non-tooth procedures (cleaning,
+// whitening, consult…) intentionally match nothing.
+
+const PROCEDURE_STATUS_RULES: { pattern: RegExp; status: ToothStatus }[] = [
+  { pattern: /extract/i, status: 'missing' },
+  { pattern: /root\s*canal|rct|endo/i, status: 'root_canal' },
+  { pattern: /crown/i, status: 'crown' },
+  { pattern: /bridge|pontic/i, status: 'bridge' },
+  { pattern: /sealant/i, status: 'sealant' },
+  { pattern: /fill|restor|composite|amalgam/i, status: 'filling' },
+];
+
+export function statusForProcedure(name: string): ToothStatus | null {
+  const rule = PROCEDURE_STATUS_RULES.find((r) => r.pattern.test(name));
+  return rule ? rule.status : null;
+}
+
+const chartDate = new Intl.DateTimeFormat('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
+
+/**
+ * Applies a visit's tooth-changing procedures to the chart in ONE write.
+ * Each affected tooth gets the treatment's status and an auto note like
+ * "Tooth filling — Jul 16, 2026".
+ */
+export async function applyProceduresToChart(
+  patientId: string,
+  dateKey: string,
+  procedures: { name: string; teeth?: string[] }[],
+): Promise<void> {
+  const updates: Record<string, ToothEntry> = {};
+  const [y, m, d] = dateKey.split('-').map(Number);
+  const dateLabel = chartDate.format(new Date(y, (m || 1) - 1, d || 1));
+
+  for (const p of procedures) {
+    const status = statusForProcedure(p.name);
+    if (!status || !p.teeth || p.teeth.length === 0) continue;
+    for (const tooth of p.teeth) {
+      updates[tooth] = { status, note: `${p.name} — ${dateLabel}` };
+    }
+  }
+
+  if (Object.keys(updates).length === 0) return;
+  const ref = doc(db, 'patients', patientId, 'chart', 'current');
+  await setDoc(ref, { teeth: updates, updatedAt: serverTimestamp() }, { merge: true });
+}
