@@ -9,6 +9,7 @@ import {
   MapPin,
   Pencil,
   Phone,
+  Printer,
   User,
 } from 'lucide-react';
 import { ToothChart } from '../components/ToothChart';
@@ -89,6 +90,12 @@ export function PatientDetail() {
           </div>
         </div>
         <div className="flex shrink-0 gap-2">
+          <Link
+            to={`/patients/${id}/print`}
+            className="flex items-center gap-1.5 rounded-lg border border-border px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <Printer className="h-4 w-4" /> Print
+          </Link>
           <Link
             to={`/patients/${id}/edit`}
             className="flex items-center gap-1.5 rounded-lg border border-border px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground"

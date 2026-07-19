@@ -82,3 +82,13 @@ body {
   outline-offset: 2px;
   border-radius: 4px;
 }
+
+/* Printable patient record: hide app controls, print on clean white */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: #ffffff;
+  }
+}

@@ -5,12 +5,15 @@ import {
   Archive,
   ArchiveRestore,
   ChevronRight,
+  FileJson,
+  FileSpreadsheet,
   Loader2,
   Phone,
   Plus,
   Search,
   Users,
 } from 'lucide-react';
+import { exportFullBackup, exportPatientsCsv } from '../lib/exporter';
 import {
   ageOf,
   fullName,
@@ -27,6 +30,17 @@ export function Patients() {
   const [term, setTerm] = useState('');
   const [view, setView] = useState<'active' | 'archived'>('active');
   const [restoringId, setRestoringId] = useState<string | null>(null);
+  const [backingUp, setBackingUp] = useState(false);
+
+  async function onBackup() {
+    if (!patients || backingUp) return;
+    setBackingUp(true);
+    try {
+      await exportFullBackup(patients);
+    } finally {
+      setBackingUp(false);
+    }
+  }
 
   useEffect(() => subscribePatients(setPatients), []);
 
@@ -76,6 +90,27 @@ export function Patients() {
           </Link>
         </div>
       </div>
+
+      {/* Data belongs to the clinic: one-click exports */}
+      {patients && patients.length > 0 && (
+        <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <button
+            onClick={() => exportPatientsCsv(patients)}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 font-semibold transition-colors hover:border-primary hover:text-foreground"
+          >
+            <FileSpreadsheet className="h-3.5 w-3.5 text-ok" /> Export CSV
+          </button>
+          <button
+            onClick={onBackup}
+            disabled={backingUp}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 font-semibold transition-colors hover:border-primary hover:text-foreground disabled:opacity-50"
+          >
+            {backingUp ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileJson className="h-3.5 w-3.5 text-accent-ink" />}
+            Full backup (JSON)
+          </button>
+          <span>— includes charts and visit history</span>
+        </div>
+      )}
 
       {/* Active / Archived view toggle (archived only shows when it has records) */}
       {archived.length > 0 && (

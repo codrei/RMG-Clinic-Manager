@@ -8,6 +8,7 @@ import { Shell } from './components/Shell';
 import { Patients } from './pages/Patients';
 import { PatientForm } from './pages/PatientForm';
 import { PatientDetail } from './pages/PatientDetail';
+import { PatientPrint } from './pages/PatientPrint';
 import { Today } from './pages/Today';
 
 /**
@@ -45,6 +46,8 @@ function App() {
         <Route path="/today" element={<Today />} />
         <Route path="*" element={<Patients />} />
       </Route>
+      {/* Print view stands alone — no app chrome on paper */}
+      <Route path="/patients/:id/print" element={<PatientPrint />} />
     </Routes>
   );
 }
