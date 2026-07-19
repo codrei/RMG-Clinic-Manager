@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
-import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useLocation, useNavigate, useParams, Link } from 'react-router-dom';
 import { ChevronLeft, HeartPulse, Loader2, Save } from 'lucide-react';
 import {
   createPatient,
@@ -32,8 +32,12 @@ export function PatientForm() {
   const { id } = useParams();
   const editing = Boolean(id);
   const navigate = useNavigate();
+  // The Today tab hands over booking details when adding a walk-in from
+  // an appointment ("Add as patient") — prefill instead of retyping.
+  const location = useLocation();
+  const prefill = (location.state as { prefill?: Partial<FormState> } | null)?.prefill;
 
-  const [form, setForm] = useState<FormState>(empty);
+  const [form, setForm] = useState<FormState>(() => ({ ...empty, ...(editing ? {} : prefill) }));
   const [loaded, setLoaded] = useState(!editing);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
