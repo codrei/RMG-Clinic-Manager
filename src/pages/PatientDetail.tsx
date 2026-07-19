@@ -4,7 +4,6 @@ import {
   AlertTriangle,
   Archive,
   ChevronLeft,
-  ClipboardList,
   Loader2,
   Mail,
   MapPin,
@@ -13,6 +12,7 @@ import {
   User,
 } from 'lucide-react';
 import { ToothChart } from '../components/ToothChart';
+import { VisitLog } from '../components/VisitLog';
 import {
   ageOf,
   archivePatient,
@@ -170,14 +170,8 @@ export function PatientDetail() {
         </section>
       </div>
 
-      {/* Visits placeholder — Part 4 */}
-      <section className="mt-6 rounded-2xl border border-dashed border-border bg-surface p-6 text-center">
-        <ClipboardList className="mx-auto h-9 w-9 text-accent-ink/50" />
-        <h2 className="mt-3 font-serif text-lg font-semibold">Visit history</h2>
-        <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
-          Per-visit treatment log — procedures, notes, fees, and balance — comes in Part 4.
-        </p>
-      </section>
+      {/* Visit history & billing */}
+      {id && <VisitLog patientId={id} />}
     </div>
   );
 }
