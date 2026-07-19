@@ -54,15 +54,14 @@ export function hasMedicalAlerts(p: Patient): boolean {
 }
 
 /**
- * Live list of active patients. A solo clinic's whole registry is a few
- * MB at most, so we subscribe to all of it and search client-side —
- * instant results, works offline, no server-side index gymnastics.
+ * Live list of ALL patients (active + archived; callers split them).
+ * A solo clinic's whole registry is a few MB at most, so we subscribe to
+ * all of it and search client-side — instant results, works offline,
+ * no server-side index gymnastics.
  */
 export function subscribePatients(cb: (list: Patient[]) => void): () => void {
   return onSnapshot(collection(db, 'patients'), (snap) => {
-    const list = snap.docs
-      .map((d) => ({ id: d.id, ...(d.data() as Omit<Patient, 'id'>) }))
-      .filter((p) => !p.archived);
+    const list = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Patient, 'id'>) }));
     list.sort((a, b) => fullName(a).localeCompare(fullName(b)));
     cb(list);
   });
@@ -121,4 +120,8 @@ export async function updatePatient(id: string, data: PatientInput): Promise<voi
 
 export async function archivePatient(id: string): Promise<void> {
   await updateDoc(doc(db, 'patients', id), { archived: true, updatedAt: serverTimestamp() });
+}
+
+export async function restorePatient(id: string): Promise<void> {
+  await updateDoc(doc(db, 'patients', id), { archived: false, updatedAt: serverTimestamp() });
 }

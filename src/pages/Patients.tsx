@@ -1,11 +1,22 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { AlertTriangle, ChevronRight, Loader2, Phone, Plus, Search, Users } from 'lucide-react';
+import {
+  AlertTriangle,
+  Archive,
+  ArchiveRestore,
+  ChevronRight,
+  Loader2,
+  Phone,
+  Plus,
+  Search,
+  Users,
+} from 'lucide-react';
 import {
   ageOf,
   fullName,
   hasMedicalAlerts,
   matchesSearch,
+  restorePatient,
   subscribePatients,
   type Patient,
 } from '../lib/patients';
@@ -14,13 +25,26 @@ export function Patients() {
   const navigate = useNavigate();
   const [patients, setPatients] = useState<Patient[] | null>(null);
   const [term, setTerm] = useState('');
+  const [view, setView] = useState<'active' | 'archived'>('active');
+  const [restoringId, setRestoringId] = useState<string | null>(null);
 
   useEffect(() => subscribePatients(setPatients), []);
 
-  const shown = useMemo(
-    () => (patients ?? []).filter((p) => matchesSearch(p, term)),
-    [patients, term],
-  );
+  const active = useMemo(() => (patients ?? []).filter((p) => !p.archived), [patients]);
+  const archived = useMemo(() => (patients ?? []).filter((p) => p.archived), [patients]);
+  const source = view === 'active' ? active : archived;
+  const shown = useMemo(() => source.filter((p) => matchesSearch(p, term)), [source, term]);
+
+  async function onRestore(p: Patient) {
+    if (!p.id) return;
+    setRestoringId(p.id);
+    try {
+      await restorePatient(p.id);
+      setView('active');
+    } finally {
+      setRestoringId(null);
+    }
+  }
 
   return (
     <div>
@@ -29,7 +53,8 @@ export function Patients() {
           <h1 className="text-3xl font-semibold">Patients</h1>
           {patients && (
             <p className="mt-1 text-sm text-muted-foreground">
-              {patients.length} {patients.length === 1 ? 'patient' : 'patients'} on record
+              {active.length} active {active.length === 1 ? 'patient' : 'patients'}
+              {archived.length > 0 && ` · ${archived.length} archived`}
             </p>
           )}
         </div>
@@ -52,6 +77,28 @@ export function Patients() {
         </div>
       </div>
 
+      {/* Active / Archived view toggle (archived only shows when it has records) */}
+      {archived.length > 0 && (
+        <div className="mt-5 flex gap-1 rounded-lg border border-border bg-surface p-0.5 w-fit">
+          <button
+            onClick={() => setView('active')}
+            className={`flex items-center gap-1.5 rounded-md px-3.5 py-1.5 text-sm font-semibold transition-colors ${
+              view === 'active' ? 'bg-primary text-primary-fg' : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Users className="h-3.5 w-3.5" /> Active
+          </button>
+          <button
+            onClick={() => setView('archived')}
+            className={`flex items-center gap-1.5 rounded-md px-3.5 py-1.5 text-sm font-semibold transition-colors ${
+              view === 'archived' ? 'bg-primary text-primary-fg' : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Archive className="h-3.5 w-3.5" /> Archived ({archived.length})
+          </button>
+        </div>
+      )}
+
       {patients === null ? (
         <div className="mt-12 flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading patients…
@@ -60,11 +107,13 @@ export function Patients() {
         <div className="mt-8 rounded-2xl border border-dashed border-border bg-surface p-12 text-center">
           <Users className="mx-auto h-10 w-10 text-accent-ink/50" />
           <p className="mx-auto mt-4 max-w-md text-muted-foreground">
-            {patients.length === 0
-              ? 'No patients yet — add the first one to start their record.'
+            {source.length === 0
+              ? view === 'archived'
+                ? 'No archived patients.'
+                : 'No patients yet — add the first one to start their record.'
               : 'No patients match that search.'}
           </p>
-          {patients.length === 0 && (
+          {view === 'active' && source.length === 0 && (
             <Link
               to="/patients/new"
               className="mt-5 inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-fg hover:bg-primary-hover"
@@ -77,22 +126,22 @@ export function Patients() {
         <div className="mt-6 overflow-hidden rounded-2xl border border-border bg-surface">
           {shown.map((p, i) => {
             const age = ageOf(p);
-            return (
-              <button
-                key={p.id}
-                onClick={() => navigate(`/patients/${p.id}`)}
-                className={`flex w-full items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-primary-soft/50 ${
-                  i > 0 ? 'border-t border-border' : ''
-                }`}
-              >
-                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary-soft font-serif font-semibold text-primary">
+            const row = (
+              <>
+                <div
+                  className={`grid h-10 w-10 shrink-0 place-items-center rounded-full font-serif font-semibold ${
+                    view === 'archived' ? 'bg-muted text-muted-foreground' : 'bg-primary-soft text-primary'
+                  }`}
+                >
                   {p.firstName.charAt(0)}
                   {p.lastName.charAt(0)}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="truncate font-semibold">{fullName(p)}</span>
-                    {hasMedicalAlerts(p) && (
+                    <span className={`truncate font-semibold ${view === 'archived' ? 'text-muted-foreground' : ''}`}>
+                      {fullName(p)}
+                    </span>
+                    {hasMedicalAlerts(p) && view === 'active' && (
                       <span title="Has medical alerts">
                         <AlertTriangle className="h-4 w-4 shrink-0 text-danger" />
                       </span>
@@ -108,8 +157,39 @@ export function Patients() {
                     )}
                   </div>
                 </div>
+              </>
+            );
+
+            return view === 'active' ? (
+              <button
+                key={p.id}
+                onClick={() => navigate(`/patients/${p.id}`)}
+                className={`flex w-full items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-primary-soft/50 ${
+                  i > 0 ? 'border-t border-border' : ''
+                }`}
+              >
+                {row}
                 <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
               </button>
+            ) : (
+              <div
+                key={p.id}
+                className={`flex w-full items-center gap-4 px-5 py-4 ${i > 0 ? 'border-t border-border' : ''}`}
+              >
+                {row}
+                <button
+                  onClick={() => onRestore(p)}
+                  disabled={restoringId === p.id}
+                  className="flex shrink-0 items-center gap-1.5 rounded-lg border border-primary/30 px-3.5 py-2 text-sm font-semibold text-primary transition-colors hover:bg-primary-soft disabled:opacity-50"
+                >
+                  {restoringId === p.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <ArchiveRestore className="h-4 w-4" />
+                  )}
+                  Restore
+                </button>
+              </div>
             );
           })}
         </div>
