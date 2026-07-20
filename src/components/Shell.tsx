@@ -3,6 +3,7 @@ import { signOut } from 'firebase/auth';
 import { Users, CalendarDays, LogOut } from 'lucide-react';
 import { auth } from '../lib/firebase';
 import { SyncBadge } from './SyncBadge';
+import { IdleGuard } from './IdleGuard';
 
 const tabs = [
   { to: '/', label: 'Patients', icon: Users, end: true },
@@ -90,6 +91,8 @@ export function Shell() {
           ))}
         </div>
       </nav>
+
+      <IdleGuard />
     </div>
   );
 }

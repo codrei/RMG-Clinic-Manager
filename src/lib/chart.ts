@@ -1,4 +1,4 @@
-import { doc, onSnapshot, setDoc, deleteField, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, setDoc, deleteField, serverTimestamp } from 'firebase/firestore';
 import { db } from './firebase';
 
 /**
@@ -23,6 +23,12 @@ export type ToothStatus =
 export interface ToothEntry {
   status: ToothStatus;
   note?: string;
+  /**
+   * The visit that auto-charted this tooth, if any. Lets editing or deleting
+   * that visit reconcile the chart. Manual edits omit it, so they're never
+   * touched by visit changes.
+   */
+  visitId?: string;
 }
 
 export type ChartTeeth = Record<string, ToothEntry>;
@@ -86,13 +92,20 @@ export function subscribeChart(patientId: string, cb: (teeth: ChartTeeth) => voi
   });
 }
 
-/** Set (or clear, with entry = null) one tooth's finding. */
+/**
+ * Set (or clear, with entry = null) one tooth's finding — a MANUAL edit.
+ * Manual edits clear any note/visit stamp left by auto-charting, so the
+ * doctor's hand-entered state is authoritative and never reverted when a
+ * visit is later edited or deleted.
+ */
 export async function setTooth(patientId: string, tooth: string, entry: ToothEntry | null): Promise<void> {
   const ref = doc(db, 'patients', patientId, 'chart', 'current');
   const value = entry
-    ? entry.note?.trim()
-      ? { status: entry.status, note: entry.note.trim() }
-      : { status: entry.status }
+    ? {
+        status: entry.status,
+        note: entry.note?.trim() ? entry.note.trim() : deleteField(),
+        visitId: deleteField(),
+      }
     : deleteField();
   await setDoc(ref, { teeth: { [tooth]: value }, updatedAt: serverTimestamp() }, { merge: true });
 }
@@ -120,28 +133,56 @@ export function statusForProcedure(name: string): ToothStatus | null {
 const chartDate = new Intl.DateTimeFormat('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
 
 /**
- * Applies a visit's tooth-changing procedures to the chart in ONE write.
- * Each affected tooth gets the treatment's status and an auto note like
- * "Tooth filling — Jul 16, 2026".
+ * Reconciles a visit's tooth-changing procedures with the chart in ONE write,
+ * so the chart never drifts out of sync when a visit is created, edited, or
+ * deleted:
+ *
+ *   • Each affected tooth gets the treatment's status, an auto note like
+ *     "Tooth filling — Jul 16, 2026", and this visit's id (provenance).
+ *   • Teeth this visit previously charted but no longer touches are cleared
+ *     (e.g. a tooth number was corrected, or the visit is being deleted).
+ *   • Teeth set by hand (no visit stamp) or by OTHER visits are left alone.
+ *
+ * Pass procedures = [] (and dateKey = null) to remove everything this visit
+ * charted — used when a visit is deleted.
  */
-export async function applyProceduresToChart(
+export async function reconcileVisitChart(
   patientId: string,
-  dateKey: string,
+  visitId: string,
+  dateKey: string | null,
   procedures: { name: string; teeth?: string[] }[],
 ): Promise<void> {
-  const updates: Record<string, ToothEntry> = {};
-  const [y, m, d] = dateKey.split('-').map(Number);
-  const dateLabel = chartDate.format(new Date(y, (m || 1) - 1, d || 1));
+  const ref = doc(db, 'patients', patientId, 'chart', 'current');
+  const snap = await getDoc(ref);
+  const teeth = (snap.data()?.teeth as ChartTeeth | undefined) ?? {};
 
-  for (const p of procedures) {
-    const status = statusForProcedure(p.name);
-    if (!status || !p.teeth || p.teeth.length === 0) continue;
-    for (const tooth of p.teeth) {
-      updates[tooth] = { status, note: `${p.name} — ${dateLabel}` };
+  // What this visit should mark on the chart now.
+  const desired: Record<string, ToothEntry> = {};
+  if (dateKey) {
+    const [y, m, d] = dateKey.split('-').map(Number);
+    const dateLabel = chartDate.format(new Date(y, (m || 1) - 1, d || 1));
+    for (const p of procedures) {
+      const status = statusForProcedure(p.name);
+      if (!status || !p.teeth || p.teeth.length === 0) continue;
+      for (const tooth of p.teeth) {
+        desired[tooth] = { status, note: `${p.name} — ${dateLabel}`, visitId };
+      }
     }
   }
 
+  const updates: Record<string, ToothEntry | ReturnType<typeof deleteField>> = {};
+  // Remove marks THIS visit made before but no longer does. Manual edits and
+  // other visits (different visitId, or none) are never cleared here.
+  for (const [tooth, entry] of Object.entries(teeth)) {
+    if (entry.visitId === visitId && !(tooth in desired)) {
+      updates[tooth] = deleteField();
+    }
+  }
+  // Apply / refresh this visit's marks.
+  for (const [tooth, entry] of Object.entries(desired)) {
+    updates[tooth] = entry;
+  }
+
   if (Object.keys(updates).length === 0) return;
-  const ref = doc(db, 'patients', patientId, 'chart', 'current');
   await setDoc(ref, { teeth: updates, updatedAt: serverTimestamp() }, { merge: true });
 }

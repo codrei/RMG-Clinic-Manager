@@ -20,7 +20,7 @@ import {
   updateVisit,
   type Visit,
 } from '../lib/visits';
-import { applyProceduresToChart } from '../lib/chart';
+import { reconcileVisitChart } from '../lib/chart';
 import { toast } from '../lib/toast';
 import { ConfirmDialog } from './ConfirmDialog';
 
@@ -127,10 +127,12 @@ export function VisitLog({ patientId }: { patientId: string }) {
         notes,
         amountPaid: parseInt(paid, 10) || 0,
       };
+      let visitId = editingId;
       if (editingId) await updateVisit(patientId, editingId, data);
-      else await createVisit(patientId, data);
-      // Treatments ARE the tooth's new state — reflect them on the chart.
-      await applyProceduresToChart(patientId, date, parsed.procedures);
+      else visitId = await createVisit(patientId, data);
+      // Treatments ARE the tooth's new state — keep the chart in sync (this
+      // also clears marks if a tooth number was corrected on an edit).
+      if (visitId) await reconcileVisitChart(patientId, visitId, date, parsed.procedures);
       setOpen(false);
     } catch {
       setError('Could not save the visit. Check your connection and try again.');
@@ -143,7 +145,10 @@ export function VisitLog({ patientId }: { patientId: string }) {
     if (!pendingDelete?.id) return;
     setDeleting(true);
     try {
-      await deleteVisit(patientId, pendingDelete.id);
+      const visitId = pendingDelete.id;
+      await deleteVisit(patientId, visitId);
+      // Remove the chart marks this visit made (leaving manual edits alone).
+      await reconcileVisitChart(patientId, visitId, null, []);
       setPendingDelete(null);
     } catch {
       toast.error('Could not delete the visit. Check your connection and try again.');
@@ -246,7 +251,8 @@ export function VisitLog({ patientId }: { patientId: string }) {
             </button>
             <p className="mt-2 text-xs text-muted-foreground">
               Fillings, extractions, root canals, crowns, bridges, and sealants
-              with teeth listed will update the dental chart automatically.
+              with teeth listed update the dental chart automatically. Correcting
+              a tooth number here updates the chart to match.
             </p>
           </div>
 
@@ -377,8 +383,8 @@ export function VisitLog({ patientId }: { patientId: string }) {
             <span className="font-semibold text-foreground">{fmtDate(pendingDelete.date)}</span>
             {pendingDelete.totalFee > 0 && <> · {peso(pendingDelete.totalFee)}</>}
             <br />
-            This permanently removes the visit from the history. The dental
-            chart is not changed.
+            This permanently removes the visit from the history. Any dental-chart
+            marks it added are cleared too — teeth you edited by hand stay as they are.
           </>
         )}
       </ConfirmDialog>
