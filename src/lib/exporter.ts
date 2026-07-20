@@ -2,6 +2,30 @@ import { collection, doc, getDoc, getDocs } from 'firebase/firestore';
 import { db } from './firebase';
 import type { Patient } from './patients';
 
+const LAST_BACKUP_KEY = 'rmg:lastBackup';
+
+/** When a full backup last succeeded on this device, and how long ago. */
+export function getBackupStatus(): { lastBackup: Date | null; daysSince: number | null } {
+  try {
+    const raw = localStorage.getItem(LAST_BACKUP_KEY);
+    if (!raw) return { lastBackup: null, daysSince: null };
+    const lastBackup = new Date(raw);
+    if (Number.isNaN(lastBackup.getTime())) return { lastBackup: null, daysSince: null };
+    const daysSince = Math.floor((Date.now() - lastBackup.getTime()) / 86_400_000);
+    return { lastBackup, daysSince };
+  } catch {
+    return { lastBackup: null, daysSince: null };
+  }
+}
+
+function markBackupDone() {
+  try {
+    localStorage.setItem(LAST_BACKUP_KEY, new Date().toISOString());
+  } catch {
+    // Private-mode / storage-blocked: the download still worked, just skip the stamp.
+  }
+}
+
 /** Triggers a browser download of generated content. */
 function download(filename: string, content: string, type: string) {
   const blob = new Blob([content], { type });
@@ -89,4 +113,5 @@ export async function exportFullBackup(patients: Patient[]) {
     patients: full,
   };
   download(`rmg-clinic-backup-${stamp()}.json`, JSON.stringify(payload, null, 2), 'application/json');
+  markBackupDone();
 }

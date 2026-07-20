@@ -13,6 +13,7 @@ import {
   type ChartTeeth,
   type ToothStatus,
 } from '../lib/chart';
+import { toast } from '../lib/toast';
 
 type Dentition = 'adult' | 'primary';
 
@@ -60,6 +61,8 @@ export function ToothChart({ patientId }: { patientId: string }) {
     try {
       await setTooth(patientId, selected, draftStatus ? { status: draftStatus, note: draftNote } : null);
       setSelected(null);
+    } catch {
+      toast.error('Could not save the tooth. Check your connection and try again.');
     } finally {
       setSaving(false);
     }
@@ -71,6 +74,8 @@ export function ToothChart({ patientId }: { patientId: string }) {
     try {
       await setTooth(patientId, selected, null);
       setSelected(null);
+    } catch {
+      toast.error('Could not update the tooth. Check your connection and try again.');
     } finally {
       setSaving(false);
     }

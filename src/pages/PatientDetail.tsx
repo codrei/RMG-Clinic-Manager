@@ -23,6 +23,7 @@ import {
   subscribePatient,
   type Patient,
 } from '../lib/patients';
+import { toast } from '../lib/toast';
 
 export function PatientDetail() {
   const { id } = useParams();
@@ -62,7 +63,8 @@ export function PatientDetail() {
     try {
       await archivePatient(id);
       navigate('/');
-    } finally {
+    } catch {
+      toast.error('Could not archive the record. Please try again.');
       setArchiving(false);
     }
   }

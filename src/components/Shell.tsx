@@ -2,6 +2,7 @@ import { NavLink, Outlet } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { Users, CalendarDays, LogOut } from 'lucide-react';
 import { auth } from '../lib/firebase';
+import { SyncBadge } from './SyncBadge';
 
 const tabs = [
   { to: '/', label: 'Patients', icon: Users, end: true },
@@ -21,14 +22,17 @@ export function Shell() {
               <div className="hidden text-xs text-muted-foreground sm:block">Patient records &amp; charts</div>
             </div>
           </div>
-          <button
-            onClick={() => signOut(auth)}
-            className="flex items-center gap-1.5 rounded-lg border border-border p-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:px-3.5 sm:py-2"
-            aria-label="Sign out"
-          >
-            <LogOut className="h-4 w-4" />
-            <span className="hidden sm:inline">Sign out</span>
-          </button>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <SyncBadge />
+            <button
+              onClick={() => signOut(auth)}
+              className="flex items-center gap-1.5 rounded-lg border border-border p-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:px-3.5 sm:py-2"
+              aria-label="Sign out"
+            >
+              <LogOut className="h-4 w-4" />
+              <span className="hidden sm:inline">Sign out</span>
+            </button>
+          </div>
         </div>
       </header>
 

@@ -5,6 +5,7 @@ import { Loader2 } from 'lucide-react';
 import { auth } from './lib/firebase';
 import { Login } from './components/Login';
 import { Shell } from './components/Shell';
+import { Toaster } from './components/Toaster';
 import { Patients } from './pages/Patients';
 import { PatientForm } from './pages/PatientForm';
 import { PatientDetail } from './pages/PatientDetail';
@@ -34,21 +35,31 @@ function App() {
     );
   }
 
-  if (!user) return <Login />;
+  if (!user) {
+    return (
+      <>
+        <Login />
+        <Toaster />
+      </>
+    );
+  }
 
   return (
-    <Routes>
-      <Route element={<Shell />}>
-        <Route path="/" element={<Patients />} />
-        <Route path="/patients/new" element={<PatientForm />} />
-        <Route path="/patients/:id" element={<PatientDetail />} />
-        <Route path="/patients/:id/edit" element={<PatientForm />} />
-        <Route path="/today" element={<Today />} />
-        <Route path="*" element={<Patients />} />
-      </Route>
-      {/* Print view stands alone — no app chrome on paper */}
-      <Route path="/patients/:id/print" element={<PatientPrint />} />
-    </Routes>
+    <>
+      <Routes>
+        <Route element={<Shell />}>
+          <Route path="/" element={<Patients />} />
+          <Route path="/patients/new" element={<PatientForm />} />
+          <Route path="/patients/:id" element={<PatientDetail />} />
+          <Route path="/patients/:id/edit" element={<PatientForm />} />
+          <Route path="/today" element={<Today />} />
+          <Route path="*" element={<Patients />} />
+        </Route>
+        {/* Print view stands alone — no app chrome on paper */}
+        <Route path="/patients/:id/print" element={<PatientPrint />} />
+      </Routes>
+      <Toaster />
+    </>
   );
 }
 

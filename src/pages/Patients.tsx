@@ -11,9 +11,11 @@ import {
   Phone,
   Plus,
   Search,
+  ShieldAlert,
   Users,
 } from 'lucide-react';
-import { exportFullBackup, exportPatientsCsv } from '../lib/exporter';
+import { exportFullBackup, exportPatientsCsv, getBackupStatus } from '../lib/exporter';
+import { toast } from '../lib/toast';
 import {
   ageOf,
   fullName,
@@ -31,14 +33,28 @@ export function Patients() {
   const [view, setView] = useState<'active' | 'archived'>('active');
   const [restoringId, setRestoringId] = useState<string | null>(null);
   const [backingUp, setBackingUp] = useState(false);
+  const [backup, setBackup] = useState(() => getBackupStatus());
 
   async function onBackup() {
     if (!patients || backingUp) return;
     setBackingUp(true);
     try {
       await exportFullBackup(patients);
+      setBackup(getBackupStatus());
+      toast.success('Backup downloaded — keep it somewhere safe.');
+    } catch {
+      toast.error('Backup failed. Check your connection and try again.');
     } finally {
       setBackingUp(false);
+    }
+  }
+
+  function onExportCsv() {
+    if (!patients) return;
+    try {
+      exportPatientsCsv(patients);
+    } catch {
+      toast.error('Could not export the CSV. Please try again.');
     }
   }
 
@@ -55,10 +71,16 @@ export function Patients() {
     try {
       await restorePatient(p.id);
       setView('active');
+    } catch {
+      toast.error('Could not restore the patient. Please try again.');
     } finally {
       setRestoringId(null);
     }
   }
+
+  // Nudge the doctor to keep an offline copy: never backed up, or 14+ days stale.
+  const needsBackup =
+    !!patients && patients.length > 0 && (backup.daysSince === null || backup.daysSince >= 14);
 
   return (
     <div>
@@ -92,11 +114,36 @@ export function Patients() {
         </div>
       </div>
 
+      {/* Reminder to keep an offline copy of the records */}
+      {needsBackup && (
+        <div className="mt-5 flex flex-col gap-3 rounded-xl border border-warn/30 bg-warn-soft p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-2.5 text-sm text-foreground">
+            <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-warn" />
+            <p>
+              <span className="font-semibold">
+                {backup.daysSince === null
+                  ? 'You haven’t saved a backup yet.'
+                  : `Your last backup was ${backup.daysSince} day${backup.daysSince === 1 ? '' : 's'} ago.`}
+              </span>{' '}
+              Download a copy so patient records are safe even if something happens to this device.
+            </p>
+          </div>
+          <button
+            onClick={onBackup}
+            disabled={backingUp}
+            className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-fg transition-colors hover:bg-primary-hover disabled:opacity-50"
+          >
+            {backingUp ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileJson className="h-4 w-4" />}
+            Back up now
+          </button>
+        </div>
+      )}
+
       {/* Data belongs to the clinic: one-click exports */}
       {patients && patients.length > 0 && (
         <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           <button
-            onClick={() => exportPatientsCsv(patients)}
+            onClick={onExportCsv}
             className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 font-semibold transition-colors hover:border-primary hover:text-foreground"
           >
             <FileSpreadsheet className="h-3.5 w-3.5 text-ok" /> Export CSV
@@ -109,7 +156,13 @@ export function Patients() {
             {backingUp ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileJson className="h-3.5 w-3.5 text-accent-ink" />}
             Full backup (JSON)
           </button>
-          <span>— includes charts and visit history</span>
+          <span>
+            {backup.daysSince === 0
+              ? '— backed up today'
+              : backup.daysSince !== null
+                ? `— last backup ${backup.daysSince} day${backup.daysSince === 1 ? '' : 's'} ago`
+                : '— includes charts and visit history'}
+          </span>
         </div>
       )}
 

@@ -21,6 +21,7 @@ import {
   type Visit,
 } from '../lib/visits';
 import { applyProceduresToChart } from '../lib/chart';
+import { toast } from '../lib/toast';
 import { ConfirmDialog } from './ConfirmDialog';
 
 const longDate = new Intl.DateTimeFormat('en-PH', { weekday: 'short', year: 'numeric', month: 'long', day: 'numeric' });
@@ -144,6 +145,8 @@ export function VisitLog({ patientId }: { patientId: string }) {
     try {
       await deleteVisit(patientId, pendingDelete.id);
       setPendingDelete(null);
+    } catch {
+      toast.error('Could not delete the visit. Check your connection and try again.');
     } finally {
       setDeleting(false);
     }
