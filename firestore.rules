@@ -53,14 +53,68 @@ service cloud.firestore {
     }
 
     // ── Clinic manager (patient records) ────────────────────────────
-    // Strictly private: no public access of any kind. Covers the patient
-    // document and every subcollection under it (dental chart, visits, …).
+    // Strictly private: no public access of any kind. Writes are also
+    // shape-checked so a bug or a compromised client can't store garbage
+    // into a medical record. (Lists — a visit's procedures, the chart's
+    // teeth map — can only be bounded, not walked, by Firestore rules;
+    // that's the same pragmatic limit the booking rules live with.)
+
+    // A patient record. Optional fields may be absent OR an (empty) string,
+    // because the app strips blanks on create but writes "" to clear on edit.
+    function validPatient() {
+      let d = request.resource.data;
+      return d.firstName is string && d.firstName.size() >= 1 && d.firstName.size() <= 60
+        && d.lastName is string && d.lastName.size() >= 1 && d.lastName.size() <= 60
+        && d.archived is bool
+        && (!('middleName' in d) || (d.middleName is string && d.middleName.size() <= 60))
+        && (!('sex' in d) || (d.sex is string && d.sex.size() <= 10))
+        && (!('birthdate' in d) || (d.birthdate is string && d.birthdate.size() <= 10))
+        && (!('phone' in d) || (d.phone is string && d.phone.size() <= 20))
+        && (!('email' in d) || (d.email is string && d.email.size() <= 100))
+        && (!('address' in d) || (d.address is string && d.address.size() <= 200))
+        && (!('occupation' in d) || (d.occupation is string && d.occupation.size() <= 80))
+        && (!('emergencyName' in d) || (d.emergencyName is string && d.emergencyName.size() <= 80))
+        && (!('emergencyPhone' in d) || (d.emergencyPhone is string && d.emergencyPhone.size() <= 20))
+        && (!('allergies' in d) || (d.allergies is string && d.allergies.size() <= 200))
+        && (!('conditions' in d) || (d.conditions is string && d.conditions.size() <= 200))
+        && (!('medications' in d) || (d.medications is string && d.medications.size() <= 200))
+        && (!('medicalNotes' in d) || (d.medicalNotes is string && d.medicalNotes.size() <= 1000))
+        && d.keys().hasOnly([
+          'firstName', 'lastName', 'middleName', 'sex', 'birthdate', 'phone', 'email',
+          'address', 'occupation', 'emergencyName', 'emergencyPhone', 'allergies',
+          'conditions', 'medications', 'medicalNotes', 'archived', 'createdAt', 'updatedAt'
+        ]);
+    }
+
+    // One visit: a date, at least one procedure, and money that can't go negative.
+    function validVisit() {
+      let d = request.resource.data;
+      return d.date is string && d.date.matches('\\d{4}-\\d{2}-\\d{2}')
+        && d.procedures is list && d.procedures.size() >= 1 && d.procedures.size() <= 50
+        && d.totalFee is number && d.totalFee >= 0
+        && d.amountPaid is number && d.amountPaid >= 0
+        && (!('notes' in d) || (d.notes is string && d.notes.size() <= 1000))
+        && d.keys().hasOnly(['date', 'procedures', 'totalFee', 'amountPaid', 'notes', 'createdAt', 'updatedAt']);
+    }
+
+    // The odontogram: a single { teeth: {...}, updatedAt } document.
+    function validChart() {
+      let d = request.resource.data;
+      return d.teeth is map && d.keys().hasOnly(['teeth', 'updatedAt']);
+    }
 
     match /patients/{patientId} {
-      allow read, write: if isClinic();
+      allow read, delete: if isClinic();
+      allow create, update: if isClinic() && validPatient();
 
-      match /{document=**} {
-        allow read, write: if isClinic();
+      match /chart/{chartId} {
+        allow read: if isClinic();
+        allow create, update: if isClinic() && validChart();
+      }
+
+      match /visits/{visitId} {
+        allow read, delete: if isClinic();
+        allow create, update: if isClinic() && validVisit();
       }
     }
   }

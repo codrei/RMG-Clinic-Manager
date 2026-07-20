@@ -1,12 +1,15 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { useLocation, useNavigate, useParams, Link } from 'react-router-dom';
-import { ChevronLeft, HeartPulse, Loader2, Save } from 'lucide-react';
+import { ChevronLeft, HeartPulse, Loader2, Save, Users } from 'lucide-react';
 import {
   createPatient,
+  findPossibleDuplicate,
+  fullName,
   subscribePatient,
   updatePatient,
   type Patient,
 } from '../lib/patients';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 
 const empty = {
   firstName: '',
@@ -41,6 +44,7 @@ export function PatientForm() {
   const [loaded, setLoaded] = useState(!editing);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [dupe, setDupe] = useState<Patient | null>(null);
 
   // Prefill when editing
   useEffect(() => {
@@ -74,10 +78,28 @@ export function PatientForm() {
       if (editing && id) {
         await updatePatient(id, form);
         navigate(`/patients/${id}`);
-      } else {
-        const newId = await createPatient(form);
-        navigate(`/patients/${newId}`);
+        return;
       }
+      // New patient: warn if someone with the same name or number already exists.
+      const existing = await findPossibleDuplicate(form.firstName, form.lastName, form.phone);
+      if (existing) {
+        setDupe(existing);
+        setSaving(false);
+        return;
+      }
+      await create();
+    } catch {
+      setError('Could not save. Check your connection and try again.');
+      setSaving(false);
+    }
+  }
+
+  async function create() {
+    setDupe(null);
+    setSaving(true);
+    try {
+      const newId = await createPatient(form);
+      navigate(`/patients/${newId}`);
     } catch {
       setError('Could not save. Check your connection and try again.');
       setSaving(false);
@@ -211,6 +233,28 @@ export function PatientForm() {
           {editing ? 'Save changes' : 'Add patient'}
         </button>
       </form>
+
+      <ConfirmDialog
+        open={dupe !== null}
+        icon={Users}
+        tone="warn"
+        title="Possible duplicate"
+        confirmLabel="Add as new anyway"
+        onConfirm={create}
+        onCancel={() => setDupe(null)}
+      >
+        {dupe && (
+          <>
+            <span className="font-semibold text-foreground">{fullName(dupe)}</span>
+            {dupe.phone ? ` (${dupe.phone})` : ''} is already in the registry. Add this as a
+            separate new record, or{' '}
+            <Link to={`/patients/${dupe.id}`} className="font-semibold text-accent-ink hover:underline">
+              open their existing record
+            </Link>
+            .
+          </>
+        )}
+      </ConfirmDialog>
     </div>
   );
 }

@@ -2,6 +2,7 @@ import {
   addDoc,
   collection,
   doc,
+  getDocs,
   onSnapshot,
   serverTimestamp,
   updateDoc,
@@ -97,6 +98,33 @@ function compact(data: PatientInput): Record<string, unknown> {
     }
   });
   return out;
+}
+
+const digitsOnly = (s: string) => s.replace(/\D/g, '');
+const nameKey = (first: string, last: string) => `${first.trim().toLowerCase()}|${last.trim().toLowerCase()}`;
+
+/**
+ * Looks for an existing ACTIVE patient who is likely the same person —
+ * same first+last name, or the same mobile number. Used to warn before a
+ * duplicate record is created by accident. Reads once (works offline from
+ * cache); a solo clinic's registry is tiny.
+ */
+export async function findPossibleDuplicate(
+  firstName: string,
+  lastName: string,
+  phone: string,
+): Promise<Patient | null> {
+  const targetName = nameKey(firstName, lastName);
+  const targetPhone = digitsOnly(phone);
+  const snap = await getDocs(collection(db, 'patients'));
+  for (const d of snap.docs) {
+    const p = { id: d.id, ...(d.data() as Omit<Patient, 'id'>) };
+    if (p.archived) continue;
+    const samePhone = targetPhone.length > 0 && digitsOnly(p.phone ?? '') === targetPhone;
+    const sameName = nameKey(p.firstName, p.lastName) === targetName;
+    if (samePhone || sameName) return p;
+  }
+  return null;
 }
 
 export async function createPatient(data: PatientInput): Promise<string> {
