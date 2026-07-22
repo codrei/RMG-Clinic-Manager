@@ -42,10 +42,14 @@ service cloud.firestore {
         && (!('address' in d) || (d.address is string && d.address.size() <= 200))
         && (!('emergencyName' in d) || (d.emergencyName is string && d.emergencyName.size() <= 80))
         && (!('emergencyPhone' in d) || (d.emergencyPhone is string && d.emergencyPhone.size() <= 20))
+        && (!('allergies' in d) || (d.allergies is string && d.allergies.size() <= 200))
+        && (!('conditions' in d) || (d.conditions is string && d.conditions.size() <= 200))
+        && (!('medications' in d) || (d.medications is string && d.medications.size() <= 200))
         && d.keys().hasOnly([
           'status', 'patientName', 'phone', 'serviceSlug', 'serviceName', 'durationMinutes',
           'date', 'time', 'email', 'notes', 'firstName', 'lastName', 'middleName', 'birthdate',
-          'sex', 'occupation', 'address', 'emergencyName', 'emergencyPhone', 'createdAt'
+          'sex', 'occupation', 'address', 'emergencyName', 'emergencyPhone',
+          'allergies', 'conditions', 'medications', 'createdAt'
         ]);
     }
 
@@ -68,6 +72,13 @@ service cloud.firestore {
     match /settings/{docId} {
       allow read: if true;
       allow write: if isClinic();
+    }
+
+    // Push-notification device tokens for booking alerts. Registered from
+    // the signed-in clinic manager app; the notify-booking server function
+    // reads them with admin credentials (bypasses rules).
+    match /fcmTokens/{token} {
+      allow read, write: if isClinic();
     }
 
     // ── Clinic manager (patient records) ────────────────────────────

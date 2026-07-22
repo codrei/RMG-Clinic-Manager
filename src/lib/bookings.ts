@@ -28,6 +28,9 @@ export interface Booking {
   address?: string;
   emergencyName?: string;
   emergencyPhone?: string;
+  allergies?: string;
+  conditions?: string;
+  medications?: string;
   status: 'pending' | 'confirmed' | 'declined' | 'cancelled';
 }
 

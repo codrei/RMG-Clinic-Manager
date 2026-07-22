@@ -24,6 +24,36 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// Booking alerts: the notify function sends DATA-ONLY FCM messages, so this
+// handler is the single place notifications are built and displayed.
+self.addEventListener('push', (event) => {
+  if (!event.data) return;
+  let payload;
+  try {
+    payload = event.data.json();
+  } catch {
+    return;
+  }
+  const d = payload && payload.data ? payload.data : {};
+  if (!d.title) return;
+  event.waitUntil(
+    self.registration.showNotification(d.title, {
+      body: d.body || '',
+      icon: '/pwa-192.png',
+      badge: '/pwa-192.png',
+      tag: d.tag || 'rmg-booking',
+      data: { link: d.link || '/' },
+    }),
+  );
+});
+
+// Tapping the notification opens the confirm/decline dashboard.
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const link = (event.notification.data && event.notification.data.link) || '/';
+  event.waitUntil(self.clients.openWindow(link));
+});
+
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;

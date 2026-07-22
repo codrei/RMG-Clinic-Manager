@@ -3,6 +3,7 @@ import { signOut } from 'firebase/auth';
 import { Users, CalendarDays, LogOut } from 'lucide-react';
 import { auth } from '../lib/firebase';
 import { SyncBadge } from './SyncBadge';
+import { PushBell } from './PushBell';
 import { IdleGuard } from './IdleGuard';
 
 const tabs = [
@@ -25,6 +26,7 @@ export function Shell() {
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
             <SyncBadge />
+            <PushBell />
             <button
               onClick={() => signOut(auth)}
               className="flex items-center gap-1.5 rounded-lg border border-border p-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:px-3.5 sm:py-2"

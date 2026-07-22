@@ -25,7 +25,7 @@ const cfg = {
 
 export const firebaseReady = Boolean(cfg.apiKey && cfg.projectId);
 
-const app = initializeApp(cfg);
+export const app = initializeApp(cfg);
 
 export const db = initializeFirestore(app, {
   localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),

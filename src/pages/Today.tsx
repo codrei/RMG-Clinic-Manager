@@ -52,6 +52,9 @@ export function Today() {
           address: b.address ?? '',
           emergencyName: b.emergencyName ?? '',
           emergencyPhone: b.emergencyPhone ?? '',
+          allergies: b.allergies ?? '',
+          conditions: b.conditions ?? '',
+          medications: b.medications ?? '',
         },
       },
     });
