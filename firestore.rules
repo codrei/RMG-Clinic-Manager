@@ -17,10 +17,14 @@ service cloud.firestore {
 
     // ── Booking site ────────────────────────────────────────────────
 
+    // The booking form doubles as the clinic's intake form, so besides the
+    // appointment it may carry the patient's personal/contact/emergency
+    // details (all optional here so older clients stay valid — the site's
+    // UI is what requires them).
     function validBooking() {
       let d = request.resource.data;
       return d.status == 'pending'
-        && d.patientName is string && d.patientName.size() >= 2 && d.patientName.size() <= 80
+        && d.patientName is string && d.patientName.size() >= 2 && d.patientName.size() <= 200
         && d.phone is string && d.phone.size() >= 7 && d.phone.size() <= 20
         && d.serviceSlug is string && d.serviceSlug.size() <= 40
         && d.serviceName is string && d.serviceName.size() <= 80
@@ -28,7 +32,21 @@ service cloud.firestore {
         && d.date is string && d.date.matches('\\d{4}-\\d{2}-\\d{2}')
         && d.time is string && d.time.matches('\\d{2}:\\d{2}')
         && (!('email' in d) || (d.email is string && d.email.size() <= 100))
-        && (!('notes' in d) || (d.notes is string && d.notes.size() <= 500));
+        && (!('notes' in d) || (d.notes is string && d.notes.size() <= 500))
+        && (!('firstName' in d) || (d.firstName is string && d.firstName.size() <= 60))
+        && (!('lastName' in d) || (d.lastName is string && d.lastName.size() <= 60))
+        && (!('middleName' in d) || (d.middleName is string && d.middleName.size() <= 60))
+        && (!('birthdate' in d) || (d.birthdate is string && d.birthdate.matches('\\d{4}-\\d{2}-\\d{2}')))
+        && (!('sex' in d) || (d.sex is string && d.sex.size() <= 10))
+        && (!('occupation' in d) || (d.occupation is string && d.occupation.size() <= 80))
+        && (!('address' in d) || (d.address is string && d.address.size() <= 200))
+        && (!('emergencyName' in d) || (d.emergencyName is string && d.emergencyName.size() <= 80))
+        && (!('emergencyPhone' in d) || (d.emergencyPhone is string && d.emergencyPhone.size() <= 20))
+        && d.keys().hasOnly([
+          'status', 'patientName', 'phone', 'serviceSlug', 'serviceName', 'durationMinutes',
+          'date', 'time', 'email', 'notes', 'firstName', 'lastName', 'middleName', 'birthdate',
+          'sex', 'occupation', 'address', 'emergencyName', 'emergencyPhone', 'createdAt'
+        ]);
     }
 
     match /bookings/{bookingId} {

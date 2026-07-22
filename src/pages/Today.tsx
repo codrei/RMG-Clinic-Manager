@@ -34,9 +34,26 @@ export function Today() {
   );
 
   function addAsPatient(b: Booking) {
-    const { firstName, lastName } = splitName(b.patientName);
+    // Newer bookings carry the full intake form; older ones only a free-text
+    // name, which we split as a best effort.
+    const name = b.firstName && b.lastName
+      ? { firstName: b.firstName, lastName: b.lastName }
+      : splitName(b.patientName);
     navigate('/patients/new', {
-      state: { prefill: { firstName, lastName, phone: b.phone, email: b.email ?? '' } },
+      state: {
+        prefill: {
+          ...name,
+          middleName: b.middleName ?? '',
+          birthdate: b.birthdate ?? '',
+          sex: b.sex ?? '',
+          occupation: b.occupation ?? '',
+          phone: b.phone,
+          email: b.email ?? '',
+          address: b.address ?? '',
+          emergencyName: b.emergencyName ?? '',
+          emergencyPhone: b.emergencyPhone ?? '',
+        },
+      },
     });
   }
 

@@ -17,6 +17,17 @@ export interface Booking {
   phone: string;
   email?: string;
   notes?: string;
+  // Intake details the booking form collects (newer bookings only) — used
+  // to prefill a complete patient record via "Add as patient".
+  firstName?: string;
+  lastName?: string;
+  middleName?: string;
+  birthdate?: string;
+  sex?: 'male' | 'female';
+  occupation?: string;
+  address?: string;
+  emergencyName?: string;
+  emergencyPhone?: string;
   status: 'pending' | 'confirmed' | 'declined' | 'cancelled';
 }
 
